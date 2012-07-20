@@ -19,15 +19,22 @@
 
 package org.jclouds.examples.ec2.windows;
 
-import com.google.common.base.Predicate;
-import com.google.common.base.Strings;
-import com.google.common.collect.Iterables;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
+
+import javax.annotation.Nullable;
+
 import org.jclouds.aws.ec2.AWSEC2Client;
 import org.jclouds.compute.ComputeService;
 import org.jclouds.compute.ComputeServiceContext;
 import org.jclouds.compute.RunNodesException;
+import org.jclouds.compute.domain.ExecResponse;
 import org.jclouds.compute.domain.NodeMetadata;
 import org.jclouds.compute.domain.Template;
+import org.jclouds.compute.options.RunScriptOptions;
 import org.jclouds.domain.LoginCredentials;
 import org.jclouds.ec2.compute.domain.PasswordDataAndPrivateKey;
 import org.jclouds.ec2.compute.functions.WindowsLoginCredentialsFromEncryptedData;
@@ -35,12 +42,9 @@ import org.jclouds.ec2.domain.PasswordData;
 import org.jclouds.logging.Logger;
 import org.jclouds.predicates.RetryablePredicate;
 
-import javax.annotation.Nullable;
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.util.Set;
-import java.util.concurrent.TimeUnit;
+import com.google.common.base.Predicate;
+import com.google.common.base.Strings;
+import com.google.common.collect.Iterables;
 
 /**
  * FIXME
@@ -126,6 +130,12 @@ public class WindowsInstanceStarter {
       logger.info("Login name: %s", credentials.getUser());
       logger.info("Password:   %s", credentials.getPassword());
 
+      // Execute a command
+      ExecResponse response = computeService.runScriptOnNode(node.getId(), "echo hello world",
+               RunScriptOptions.Builder.overrideLoginCredentials(credentials));
+      
+      logger.info("Exec response: %s", response.getOutput());
+      
       // Wait for Enter on the console
       logger.info("Hit Enter to shut down the node.");
       InputStreamReader converter = new InputStreamReader(System.in);

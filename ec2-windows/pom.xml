@@ -32,12 +32,12 @@
       <dependency>
         <groupId>org.jclouds</groupId>
         <artifactId>jclouds-compute</artifactId>
-        <version>1.5.0-beta.1</version>
+        <version>1.5.0-beta.7</version>
       </dependency>
       <dependency>
         <groupId>org.jclouds.provider</groupId>
         <artifactId>aws-ec2</artifactId>
-        <version>1.5.0-beta.1</version>
+        <version>1.5.0-beta.7</version>
       </dependency>
       <dependency>
         <groupId>org.bouncycastle</groupId>
@@ -48,7 +48,7 @@
       <dependency>
         <groupId>org.jclouds.driver</groupId>
         <artifactId>jclouds-bouncycastle</artifactId>
-        <version>1.5.0-beta.1</version>
+        <version>1.5.0-beta.7</version>
         <exclusions>
            <!-- bouncy castle is a provider, so
               it must be signed and used as-is.
@@ -63,13 +63,13 @@
       </dependency>
       <dependency>
         <groupId>org.jclouds.driver</groupId>
-        <artifactId>jclouds-sshj</artifactId>
-        <version>1.5.0-beta.1</version>
+        <artifactId>jclouds-overthere</artifactId>
+        <version>1.5.0-SNAPSHOT</version>
       </dependency>
       <dependency>
         <groupId>org.jclouds.driver</groupId>
         <artifactId>jclouds-slf4j</artifactId>
-        <version>1.5.0-beta.1</version>
+        <version>1.5.0-beta.7</version>
       </dependency>
       <dependency>
          <groupId>org.slf4j</groupId>
