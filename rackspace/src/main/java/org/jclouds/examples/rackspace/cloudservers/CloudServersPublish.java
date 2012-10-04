@@ -21,32 +21,35 @@ package org.jclouds.examples.rackspace.cloudservers;
 import static org.jclouds.scriptbuilder.domain.Statements.exec;
 
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import org.jclouds.ContextBuilder;
 import org.jclouds.compute.ComputeService;
 import org.jclouds.compute.ComputeServiceContext;
-import org.jclouds.compute.RunNodesException;
 import org.jclouds.compute.options.RunScriptOptions;
+import org.jclouds.examples.rackspace.cloudservers.util.ServerStatusPredicate;
 import org.jclouds.openstack.nova.v2_0.NovaApi;
 import org.jclouds.openstack.nova.v2_0.NovaAsyncApi;
 import org.jclouds.openstack.nova.v2_0.domain.Flavor;
 import org.jclouds.openstack.nova.v2_0.domain.Image;
 import org.jclouds.openstack.nova.v2_0.domain.Server;
-import org.jclouds.openstack.nova.v2_0.domain.Server.Status;
 import org.jclouds.openstack.nova.v2_0.domain.ServerCreated;
 import org.jclouds.openstack.nova.v2_0.features.FlavorApi;
 import org.jclouds.openstack.nova.v2_0.features.ImageApi;
 import org.jclouds.openstack.nova.v2_0.features.ServerApi;
+import org.jclouds.openstack.v2_0.domain.Resource;
+import org.jclouds.predicates.InetSocketAddressConnect;
+import org.jclouds.predicates.RetryablePredicate;
 import org.jclouds.rest.RestContext;
 import org.jclouds.scriptbuilder.ScriptBuilder;
 import org.jclouds.scriptbuilder.domain.OsFamily;
 import org.jclouds.sshj.config.SshjSshClientModule;
 
-import com.google.common.base.Throwables;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.net.HostAndPort;
 import com.google.inject.Module;
 
 /**
@@ -101,16 +104,23 @@ public class CloudServersPublish {
 		nova = context.unwrap();
 	}
 	
-	private Map<String, String> createServer() throws RunNodesException, TimeoutException {
+	/**
+	 * Create a server and block until it's ACTIVE. 
+	 */
+	private Map<String, String> createServer() throws TimeoutException {
 		String imageId = getImageId();
 		String flavorId = getFlavorId();
 		
 		System.out.println("Create Server");
 		
-		ServerApi serverApi = nova.getApi().getServerApiForZone(ZONE);
-				
+		ServerApi serverApi = nova.getApi().getServerApiForZone(ZONE);				
 		ServerCreated serverCreated = serverApi.create(SERVER_NAME, imageId, flavorId);
-		blockUntilServerInState(serverCreated.getId(), Server.Status.ACTIVE, 600, 5, serverApi);
+		RetryablePredicate<Resource> blockUntilActive = new RetryablePredicate<Resource>(
+			new ServerStatusPredicate(serverApi, Server.Status.ACTIVE), 600, 10, 10, TimeUnit.SECONDS);
+
+		if (!blockUntilActive.apply(serverCreated))
+			throw new TimeoutException("Timeout on server: " + serverCreated);		
+		
 		Server server = serverApi.get(serverCreated.getId());
 
 		System.out.println("  " + server);
@@ -121,16 +131,18 @@ public class CloudServersPublish {
 			"password", serverCreated.getAdminPass());
 	}
 
-	private void configureAndStartWebserver(Map<String, String> serverInfo) {
+	/**
+	 * Configure and start a web server with a web page on the server. 
+	 */
+	private void configureAndStartWebserver(Map<String, String> serverInfo) throws TimeoutException {
 		System.out.println("Configure And Start Webserver");
 
-		// Give ssh 20 seconds to start
-		try {
-			Thread.sleep(20 * 1000);
-		} 
-		catch (InterruptedException e) {
-			throw Throwables.propagate(e);
-		}
+		// Wait for ssh to start
+		RetryablePredicate<HostAndPort> blockUntilSSHReady = new RetryablePredicate<HostAndPort>(
+			new InetSocketAddressConnect(), 300, 1, 1, TimeUnit.SECONDS);
+
+		if (!blockUntilSSHReady.apply(HostAndPort.fromParts(serverInfo.get("ip"), 22)))
+			throw new TimeoutException("Timeout on ssh: " + serverInfo.get("ip"));
 		
 		String script = new ScriptBuilder()
 			.addStatement(exec("yum -y install httpd"))
@@ -149,47 +161,6 @@ public class CloudServersPublish {
 		System.out.println("  Go to http://" + serverInfo.get("ip"));
 	}
 	
-	/** 
-	 * Will block until the server is in the correct state.
-	 * 
-	 * @param serverId The id of the server to block on
-	 * @param status The status the server needs to reach before the method stops blocking
-	 * @param timeoutSeconds The maximum amount of time to block before throwing a TimeoutException
-	 * @param delaySeconds The amout of time between server status checks
-	 * @param serverApi The ServerApi used to do the checking
-	 * 
-	 * @throws TimeoutException If the server does not reach the status by timeoutSeconds 
-	 */
-	protected void blockUntilServerInState(String serverId, Status status, 
-			int timeoutSeconds, int delaySeconds, ServerApi serverApi) throws TimeoutException {
-		int totalSeconds = 0;
-		
-		while (totalSeconds < timeoutSeconds) {
-			System.out.print(".");
-			
-			Server server = serverApi.get(serverId);
-			
-			if (server.getStatus().equals(status)) {
-				System.out.println();
-				return;
-			}
-			
-			try {
-				Thread.sleep(delaySeconds * 1000);
-			} 
-			catch (InterruptedException e) {
-				throw Throwables.propagate(e);
-			}
-			
-			totalSeconds += delaySeconds;
-		}
-		
-		String message = String.format("Timed out at %d seconds waiting for server %s to reach status %s.", 
-			timeoutSeconds, serverId, status);
-		
-		throw new TimeoutException(message);
-	}
-
 	/**
 	 * This method uses the generic ComputeService.listHardwareProfiles() to find the hardware profile.
 	 * 

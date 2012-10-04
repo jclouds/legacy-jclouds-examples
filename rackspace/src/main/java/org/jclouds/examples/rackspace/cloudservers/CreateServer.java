@@ -18,25 +18,26 @@
  */
 package org.jclouds.examples.rackspace.cloudservers;
 
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import org.jclouds.ContextBuilder;
 import org.jclouds.compute.ComputeService;
 import org.jclouds.compute.ComputeServiceContext;
-import org.jclouds.compute.RunNodesException;
+import org.jclouds.examples.rackspace.cloudservers.util.ServerStatusPredicate;
 import org.jclouds.openstack.nova.v2_0.NovaApi;
 import org.jclouds.openstack.nova.v2_0.NovaAsyncApi;
 import org.jclouds.openstack.nova.v2_0.domain.Flavor;
 import org.jclouds.openstack.nova.v2_0.domain.Image;
 import org.jclouds.openstack.nova.v2_0.domain.Server;
-import org.jclouds.openstack.nova.v2_0.domain.Server.Status;
 import org.jclouds.openstack.nova.v2_0.domain.ServerCreated;
 import org.jclouds.openstack.nova.v2_0.features.FlavorApi;
 import org.jclouds.openstack.nova.v2_0.features.ImageApi;
 import org.jclouds.openstack.nova.v2_0.features.ServerApi;
+import org.jclouds.openstack.v2_0.domain.Resource;
+import org.jclouds.predicates.RetryablePredicate;
 import org.jclouds.rest.RestContext;
 
-import com.google.common.base.Throwables;
 import com.google.common.collect.FluentIterable;
 
 /**
@@ -87,61 +88,27 @@ public class CreateServer {
 		nova = context.unwrap();
 	}
 	
-	private void createServer() throws RunNodesException, TimeoutException {
+	/**
+	 * Create a server and block until it's ACTIVE. 
+	 */
+	private void createServer() throws TimeoutException {
 		String imageId = getImageId();
 		String flavorId = getFlavorId();
 		
 		System.out.println("Create Server");
 		
 		ServerApi serverApi = nova.getApi().getServerApiForZone(ZONE);
-				
-		ServerCreated serverCreated = serverApi.create(SERVER_NAME, imageId, flavorId);
-		blockUntilServerInState(serverCreated.getId(), Server.Status.ACTIVE, 600, 5, serverApi);
+		ServerCreated serverCreated = serverApi.create(SERVER_NAME, imageId, flavorId);		
+		RetryablePredicate<Resource> blockUntilActive = new RetryablePredicate<Resource>(
+				new ServerStatusPredicate(serverApi, Server.Status.ACTIVE), 600, 10, 10, TimeUnit.SECONDS);
+
+		if (!blockUntilActive.apply(serverCreated))
+			throw new TimeoutException("Timeout on server: " + serverCreated);		
+		
 		Server server = serverApi.get(serverCreated.getId());
 
 		System.out.println("  " + serverCreated);
 		System.out.println("  Login IP: " + server.getAccessIPv4() +" Username: root Password: " + serverCreated.getAdminPass());
-	}
-
-	/** 
-	 * Will block until the server is in the correct state.
-	 * 
-	 * @param serverId The id of the server to block on
-	 * @param status The status the server needs to reach before the method stops blocking
-	 * @param timeoutSeconds The maximum amount of time to block before throwing a TimeoutException
-	 * @param delaySeconds The amout of time between server status checks
-	 * @param serverApi The ServerApi used to do the checking
-	 * 
-	 * @throws TimeoutException If the server does not reach the status by timeoutSeconds 
-	 */
-	protected void blockUntilServerInState(String serverId, Status status, 
-			int timeoutSeconds, int delaySeconds, ServerApi serverApi) throws TimeoutException {
-		int totalSeconds = 0;
-		
-		while (totalSeconds < timeoutSeconds) {
-			System.out.print(".");
-			
-			Server server = serverApi.get(serverId);
-			
-			if (server.getStatus().equals(status)) {
-				System.out.println();
-				return;
-			}
-			
-			try {
-				Thread.sleep(delaySeconds * 1000);
-			} 
-			catch (InterruptedException e) {
-				throw Throwables.propagate(e);
-			}
-			
-			totalSeconds += delaySeconds;
-		}
-		
-		String message = String.format("Timed out at %d seconds waiting for server %s to reach status %s.", 
-			timeoutSeconds, serverId, status);
-		
-		throw new TimeoutException(message);
 	}
 
 	/**
