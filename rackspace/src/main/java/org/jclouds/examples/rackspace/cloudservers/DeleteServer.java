@@ -30,7 +30,7 @@ import org.jclouds.rest.RestContext;
 import com.google.common.collect.FluentIterable;
 
 /**
- * This example destroys the server created in the CreateServer example. 
+ * This example deletes ALL servers that start with {@link SERVER_NAME}
  *  
  * @author Everett Toews
  */

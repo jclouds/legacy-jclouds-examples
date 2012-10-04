@@ -50,6 +50,10 @@ The [cloudservers package](https://github.com/jclouds/jclouds-examples/tree/mast
   * [CloudServersPublish](https://github.com/jclouds/jclouds-examples/blob/master/rackspace/src/main/java/org/jclouds/examples/rackspace/cloudservers/CloudServersPublish.java) - An end to end example of publishing a web page on the internet with Cloud Servers.
   * Other examples of creating, manipulating, listing and deleting servers.
 
+The [cloudservers.util package](https://github.com/jclouds/jclouds-examples/tree/master/rackspace/src/main/java/org/jclouds/examples/rackspace/cloudservers/util) contains some useful utilites for interacting with Cloud Servers.  
+
+  * [ServerStatusPredicate](https://github.com/jclouds/jclouds-examples/tree/master/rackspace/src/main/java/org/jclouds/examples/rackspace/cloudservers/util/ServerStatusPredicate.java) - Tests to see if a server has reached a particular status.
+  * [IterableServersStatusPredicate](https://github.com/jclouds/jclouds-examples/tree/master/rackspace/src/main/java/org/jclouds/examples/rackspace/cloudservers/util/IterableServersStatusPredicate.java) - Tests to see if ALL servers have reached a particular status.
 
 ## Command Line
 To run these examples from the command line follow these instructions.
