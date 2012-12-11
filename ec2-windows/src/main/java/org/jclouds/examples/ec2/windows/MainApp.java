@@ -19,11 +19,11 @@
 
 package org.jclouds.examples.ec2.windows;
 
-import com.google.common.base.Function;
-import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Iterables;
-import com.google.common.collect.Sets;
-import com.google.inject.Module;
+import java.util.Properties;
+import java.util.Set;
+
+import javax.annotation.Nullable;
+
 import org.jclouds.ContextBuilder;
 import org.jclouds.aws.ec2.reference.AWSEC2Constants;
 import org.jclouds.compute.ComputeService;
@@ -32,12 +32,15 @@ import org.jclouds.domain.Location;
 import org.jclouds.encryption.bouncycastle.config.BouncyCastleCryptoModule;
 import org.jclouds.location.predicates.LocationPredicates;
 import org.jclouds.logging.slf4j.config.SLF4JLoggingModule;
+import org.jclouds.overthere.config.OverthereClientModule;
 import org.kohsuke.args4j.CmdLineException;
 import org.kohsuke.args4j.CmdLineParser;
 
-import javax.annotation.Nullable;
-import java.util.Properties;
-import java.util.Set;
+import com.google.common.base.Function;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Iterables;
+import com.google.common.collect.Sets;
+import com.google.inject.Module;
 
 /**
  * The main application. This will parse and validate the command line
@@ -76,7 +79,8 @@ public class MainApp {
 
       ImmutableSet<Module> modules = ImmutableSet.<Module>of(
          new SLF4JLoggingModule(), // OverThere uses SLF4J so we will as well
-         new BouncyCastleCryptoModule() // needed to decrypt the password from EC2
+         new BouncyCastleCryptoModule(), // needed to decrypt the password from EC2
+         new OverthereClientModule() // needed to decrypt the password from EC2
       );
       context = ContextBuilder.newBuilder("aws-ec2")
          .credentials(arguments.getIdentity(), arguments.getCredential())
