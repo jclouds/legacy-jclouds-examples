@@ -13,6 +13,9 @@ object ApplicationBuild extends Build {
       "org.reflections" % "reflections" % "0.9.7.RC1"
       //If using the securesocial module you may need to do the following to make jclouds run:
       //"securesocial" %% "securesocial" % "2.0.12" excludeAll(ExclusionRule(organization="org.ow2.spec.ee"), ExclusionRule(organization="com.cedarsoft"))
+      
+      
+      //NOTE Play 2.0.4 at least, also requires Netty 3.5.0.Final, the version in the JClouds enterprise module breaks Play's Cookie encoding engine.
     )
 
     val main = PlayProject(appName, appVersion, appDependencies, mainLang = JAVA).settings(
